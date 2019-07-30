@@ -1,0 +1,28 @@
+filesystem: "root"
+mode: 0755
+path: "/etc/dhcp/dhclient.d/use_vc.sh"
+contents:
+  inline: |
+    #!/bin/sh
+
+    OPTION="use-vc"
+    RESOLV_FILE="/etc/resolv.conf"
+    APP="dhclient.d-use-vc"
+
+    echo "Called by NetworkManager dispatcher action '$NM_DISPATCHER_ACTION'" | systemd-cat -t "$APP" -p info
+    echo "Processing $RESOLV_FILE" | systemd-cat -t "$APP" -p info
+    if ! grep -q "$OPTION" "$RESOLV_FILE"; then
+        echo "missing use-vc" | systemd-cat -t "$APP" -p info
+        if ! grep "options" "$RESOLV_FILE"; then
+            echo "No pre-existing resolv options" | systemd-cat -t "$APP" -p info
+            echo "Adding options $OPTION" | systemd-cat -t "$APP" -p info
+            echo "options $OPTION" >> /etc/resolv.conf
+        else
+            echo "prepending option $OPTION to the other options" | systemd-cat -t "$APP" -p info
+            sed -i "s/options /options $OPTION /" "$RESOLV_FILE"
+        fi
+    else
+        echo "already has use-vc" | systemd-cat -t "$APP" -p info
+    fi
+
+    systemd-cat -t "$APP" -p debug < /etc/resolv.conf
